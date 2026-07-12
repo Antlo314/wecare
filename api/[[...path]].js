@@ -11,6 +11,7 @@
  */
 const crypto = require('crypto');
 const { Redis } = require('@upstash/redis');
+const { chatWithGemini } = require('../lib/chat');
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'wecare2026';
 const SESSION_SECRET = process.env.SESSION_SECRET ||
@@ -66,6 +67,17 @@ module.exports = async (req, res) => {
   const m = req.method;
 
   try {
+    // ----- public: website chat (Gemini) -----
+    if (route === 'chat' && m === 'POST') {
+      try {
+        const { message, history } = req.body || {};
+        const result = await chatWithGemini({ message, history });
+        return res.json({ ok: true, reply: result.reply });
+      } catch (err) {
+        return res.status(err.status || 500).json({ error: err.message || 'Chat unavailable.' });
+      }
+    }
+
     // ----- public: contact form -----
     if (route === 'contact' && m === 'POST') {
       const { name, email, phone, service, contactMethod, message, website } = req.body || {};

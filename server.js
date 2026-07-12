@@ -6,11 +6,35 @@
  * Config (environment variables, all optional):
  *   PORT            — default 3000
  *   ADMIN_PASSWORD  — dashboard password, default "wecare2026" (CHANGE THIS)
+ *   GEMINI_API_KEY  — Google AI Studio key for the site chat widget (server-side only)
+ *   GEMINI_MODEL    — optional model id (default gemini-2.0-flash)
  */
 const express = require('express');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { chatWithGemini } = require('./lib/chat');
+
+// Load .env / .env.local for local development (never commit secrets)
+function loadEnvFile(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return;
+    fs.readFileSync(filePath, 'utf8').split(/\r?\n/).forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) return;
+      const i = trimmed.indexOf('=');
+      if (i < 1) return;
+      const key = trimmed.slice(0, i).trim();
+      let val = trimmed.slice(i + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (key && process.env[key] === undefined) process.env[key] = val;
+    });
+  } catch { /* ignore */ }
+}
+loadEnvFile(path.join(__dirname, '.env'));
+loadEnvFile(path.join(__dirname, '.env.local'));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,7 +93,31 @@ function rateLimit(req, res, next) {
   next();
 }
 
+const chatHits = new Map();
+function chatRateLimit(req, res, next) {
+  const ip = req.ip || 'x';
+  const now = Date.now();
+  const rec = chatHits.get(ip) || [];
+  const recent = rec.filter(t => now - t < 60_000);
+  if (recent.length >= 12) {
+    return res.status(429).json({ error: 'Too many chat messages. Please wait a moment, or use the appointment form.' });
+  }
+  recent.push(now);
+  chatHits.set(ip, recent);
+  next();
+}
+
 // ---------- public API ----------
+app.post('/api/chat', chatRateLimit, async (req, res) => {
+  try {
+    const { message, history } = req.body || {};
+    const result = await chatWithGemini({ message, history });
+    res.json({ ok: true, reply: result.reply });
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message || 'Chat unavailable.' });
+  }
+});
+
 app.post('/api/contact', rateLimit, (req, res) => {
   const { name, email, phone, service, contactMethod, message, website } = req.body || {};
   if (website) return res.json({ ok: true }); // honeypot — silently drop bots
