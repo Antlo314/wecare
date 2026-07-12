@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WeCare — Owner Dashboard</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root { --ink:#22302c; --soft:#55655f; --green:#35594e; --green-deep:#27443b; --tint:#e8efec;
+  --cream:#faf8f4; --line:#e3e0d8; --gold:#c8a24b; --shadow:0 10px 30px rgba(34,48,44,.08); }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:"Inter",sans-serif; background:var(--cream); color:var(--ink); min-height:100vh; }
+h1,h2 { font-family:"Fraunces",serif; font-weight:500; }
+.btn { padding:11px 22px; border-radius:999px; border:none; font-weight:600; font-size:.92rem; cursor:pointer;
+  background:var(--green); color:#fff; font-family:"Inter",sans-serif; transition:background .15s; }
+.btn:hover { background:var(--green-deep); }
+.btn.ghost { background:transparent; color:var(--green); border:1.5px solid var(--green); }
+.btn.ghost:hover { background:var(--tint); }
+.btn.sm { padding:6px 14px; font-size:.8rem; }
+.btn.danger { background:transparent; color:#b3401e; border:1.5px solid #d9b7aa; }
+.btn.danger:hover { background:#fbeee9; }
+
+/* login */
+#loginView { display:grid; place-items:center; min-height:100vh; padding:24px; }
+.login-card { background:#fff; border:1px solid var(--line); border-radius:20px; padding:44px 40px; width:100%; max-width:400px; box-shadow:var(--shadow); text-align:center; }
+.login-card .leaf { font-size:2rem; }
+.login-card h1 { font-size:1.5rem; margin:10px 0 4px; }
+.login-card p { color:var(--soft); font-size:.9rem; margin-bottom:24px; }
+.login-card input { width:100%; padding:13px 15px; border:1.5px solid var(--line); border-radius:10px; font-size:1rem; margin-bottom:14px; background:var(--cream); font-family:"Inter",sans-serif; }
+.login-card input:focus { outline:none; border-color:var(--green); background:#fff; }
+.login-card .btn { width:100%; padding:13px; }
+.login-err { color:#b3401e; font-size:.88rem; margin-top:12px; font-weight:600; min-height:1.2em; }
+
+/* dashboard */
+#dashView { display:none; }
+.topbar { background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10; }
+.topbar-inner { max-width:1100px; margin:0 auto; padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.topbar h1 { font-size:1.25rem; }
+.topbar h1 span { color:var(--green); font-style:italic; }
+.topbar .actions { display:flex; gap:10px; }
+.wrap { max-width:1100px; margin:0 auto; padding:32px 24px 80px; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:16px; margin-bottom:28px; }
+.stat { background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px 22px; }
+.stat b { font-family:"Fraunces",serif; font-size:1.9rem; color:var(--green); display:block; }
+.stat span { color:var(--soft); font-size:.82rem; }
+
+.lead { background:#fff; border:1px solid var(--line); border-radius:14px; padding:20px 24px; margin-bottom:14px; transition:box-shadow .15s; }
+.lead:hover { box-shadow:var(--shadow); }
+.lead.unread { border-left:4px solid var(--gold); }
+.lead-top { display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; }
+.lead-name { font-weight:700; font-size:1.05rem; }
+.lead-name .new { background:var(--gold); color:#fff; font-size:.66rem; padding:2px 8px; border-radius:999px; vertical-align:middle; margin-left:8px; text-transform:uppercase; letter-spacing:.05em; }
+.lead-date { color:var(--soft); font-size:.82rem; }
+.lead-meta { display:flex; gap:18px; flex-wrap:wrap; margin:10px 0; font-size:.88rem; color:var(--soft); }
+.lead-meta a { color:var(--green); font-weight:600; text-decoration:none; }
+.lead-meta a:hover { text-decoration:underline; }
+.lead-msg { background:var(--cream); border-radius:10px; padding:12px 16px; font-size:.92rem; margin:10px 0; white-space:pre-wrap; }
+.lead-actions { display:flex; gap:8px; margin-top:12px; }
+.empty { text-align:center; color:var(--soft); padding:70px 20px; background:#fff; border:1px dashed var(--line); border-radius:14px; }
+.empty .leaf { font-size:2.4rem; display:block; margin-bottom:12px; }
+</style>
+</head>
+<body>
+
+<div id="loginView">
+  <form class="login-card" id="loginForm">
+    <div class="leaf">🌿</div>
+    <h1>Owner Dashboard</h1>
+    <p>WeCare Counseling Services — private area</p>
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password" required>
+    <button class="btn" type="submit">Sign In</button>
+    <p class="login-err" id="loginErr"></p>
+  </form>
+</div>
+
+<div id="dashView">
+  <div class="topbar">
+    <div class="topbar-inner">
+      <h1>We<span>Care</span> — Appointment Requests</h1>
+      <div class="actions">
+        <button class="btn ghost sm" onclick="loadLeads()">Refresh</button>
+        <a class="btn ghost sm" href="/api/submissions.csv" style="text-decoration:none">Export CSV</a>
+        <button class="btn sm" onclick="logout()">Log Out</button>
+      </div>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="stats">
+      <div class="stat"><b id="statTotal">0</b><span>Total requests</span></div>
+      <div class="stat"><b id="statNew">0</b><span>New / unread</span></div>
+      <div class="stat"><b id="statWeek">0</b><span>Last 7 days</span></div>
+    </div>
+    <div id="leadList"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+async function api(url, opts) {
+  const res = await fetch(url, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts));
+  if (res.status === 401) { showLogin(); throw new Error('unauthorized'); }
+  return res;
+}
+function showLogin() { $('loginView').style.display = 'grid'; $('dashView').style.display = 'none'; }
+function showDash() { $('loginView').style.display = 'none'; $('dashView').style.display = 'block'; loadLeads(); }
+
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('loginErr').textContent = '';
+  const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ password: $('password').value }) });
+  if (res.ok) { $('password').value=''; showDash(); }
+  else { const b = await res.json().catch(()=>({})); $('loginErr').textContent = b.error || 'Login failed.'; }
+});
+
+async function logout() { await fetch('/api/logout', { method:'POST' }); showLogin(); }
+
+const esc = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function loadLeads() {
+  const res = await api('/api/submissions');
+  const leads = await res.json();
+  $('statTotal').textContent = leads.length;
+  $('statNew').textContent = leads.filter(l => !l.read).length;
+  const weekAgo = Date.now() - 7*24*3600*1000;
+  $('statWeek').textContent = leads.filter(l => new Date(l.receivedAt) > weekAgo).length;
+
+  if (!leads.length) {
+    $('leadList').innerHTML = '<div class="empty"><span class="leaf">🌿</span>No appointment requests yet.<br>New form submissions from the website will appear here.</div>';
+    return;
+  }
+  $('leadList').innerHTML = leads.map(l => `
+    <div class="lead ${l.read ? '' : 'unread'}">
+      <div class="lead-top">
+        <span class="lead-name">${esc(l.name)}${l.read ? '' : '<span class="new">New</span>'}</span>
+        <span class="lead-date">${new Date(l.receivedAt).toLocaleString('en-US',{dateStyle:'medium',timeStyle:'short'})}</span>
+      </div>
+      <div class="lead-meta">
+        ${l.email ? `<span>✉️ <a href="mailto:${esc(l.email)}">${esc(l.email)}</a></span>` : ''}
+        ${l.phone ? `<span>📞 <a href="tel:${esc(l.phone)}">${esc(l.phone)}</a></span>` : ''}
+        ${l.service ? `<span>🗂 ${esc(l.service)}</span>` : ''}
+        ${l.contactMethod ? `<span>Prefers: ${esc(l.contactMethod)}</span>` : ''}
+      </div>
+      ${l.message ? `<div class="lead-msg">${esc(l.message)}</div>` : ''}
+      <div class="lead-actions">
+        <button class="btn ghost sm" onclick="markRead('${l.id}', ${l.read ? 'false' : 'true'})">${l.read ? 'Mark unread' : 'Mark as read'}</button>
+        <button class="btn danger sm" onclick="removeLead('${l.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+}
+
+async function markRead(id, read) {
+  await api(`/api/submissions/${id}/read`, { method:'POST', body: JSON.stringify({ read }) });
+  loadLeads();
+}
+async function removeLead(id) {
+  if (!confirm('Delete this request permanently?')) return;
+  await api(`/api/submissions/${id}`, { method:'DELETE' });
+  loadLeads();
+}
+
+// auto-detect existing session
+fetch('/api/session').then(r=>r.json()).then(s => s.authed ? showDash() : showLogin());
+</script>
+</body>
+</html>

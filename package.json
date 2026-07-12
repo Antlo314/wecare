@@ -1,0 +1,12 @@
+{
+  "name": "wecare-counseling",
+  "version": "1.0.0",
+  "description": "WeCare Counseling Services — marketing site + lead dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
