@@ -1,0 +1,29 @@
+{
+  "name": "WeCare Counseling Services",
+  "short_name": "WeCare",
+  "description": "Solution-focused therapy in Conyers, GA — Lisa Guest, LPC, LMSW",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#faf8f4",
+  "theme_color": "#27443b",
+  "lang": "en-US",
+  "icons": [
+    {
+      "src": "/assets/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
