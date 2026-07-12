@@ -127,7 +127,7 @@ app.delete('/api/submissions/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/submissions.csv', requireAuth, (req, res) => {
+app.get('/api/export', requireAuth, (req, res) => {
   const esc = v => `"${String(v || '').replace(/"/g, '""')}"`;
   const rows = loadSubmissions().map(s =>
     [s.receivedAt, s.name, s.email, s.phone, s.service, s.contactMethod, s.message, s.read ? 'yes' : 'no'].map(esc).join(','));
