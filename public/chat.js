@@ -202,7 +202,20 @@
       });
       const data = await res.json().catch(() => ({}));
       typing.remove();
-      if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+      if (!res.ok) {
+        const msg = data.error || 'Something went wrong.';
+        if (res.status === 401 || /unauthorized/i.test(msg)) {
+          throw new Error(
+            'Chat service is still deploying or not configured. Please try again in a minute, or use the appointment form on this page.'
+          );
+        }
+        if (res.status === 503 || /not configured/i.test(msg)) {
+          throw new Error(
+            'Chat is not configured on the server yet. Please use the appointment form, or check that GEMINI_API_KEY is set in Vercel.'
+          );
+        }
+        throw new Error(msg);
+      }
       const reply = data.reply || '…';
       history.push({ role: 'model', text: reply });
       addBubble('bot', reply, false);

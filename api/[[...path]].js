@@ -61,16 +61,44 @@ function isAuthed(req) {
 const setSessionCookie = (res, token, maxAge) =>
   res.setHeader('Set-Cookie', `wc_session=${token}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Strict; Secure`);
 
+/** Resolve catch-all segments; fall back to parsing req.url if query.path is empty. */
+function resolvePath(req) {
+  let raw = req.query && req.query.path;
+  const empty =
+    raw == null ||
+    raw === '' ||
+    (Array.isArray(raw) && raw.filter(Boolean).length === 0);
+
+  if (empty) {
+    const urlPath = String(req.url || '').split('?')[0];
+    // "/api/chat" → "chat", "/chat" → "chat" (depending on mount)
+    const stripped = urlPath.replace(/^\/api\/?/, '').replace(/^\//, '');
+    raw = stripped ? stripped.split('/').filter(Boolean) : [];
+  }
+
+  const segs = [].concat(raw).map(String).filter(Boolean);
+  return { segs, route: segs.join('/') };
+}
+
+function parseBody(req) {
+  let body = req.body;
+  if (body == null || body === '') return {};
+  if (typeof body === 'string') {
+    try { return JSON.parse(body); } catch { return {}; }
+  }
+  return body;
+}
+
 module.exports = async (req, res) => {
-  const segs = [].concat(req.query.path || []); // e.g. ['submissions', '<id>', 'read']
-  const route = segs.join('/');
+  const { segs, route } = resolvePath(req);
   const m = req.method;
+  const body = parseBody(req);
 
   try {
-    // ----- public: website chat (Gemini) -----
-    if (route === 'chat' && m === 'POST') {
+    // ----- public: website chat (Gemini) — also available at api/chat.js -----
+    if ((route === 'chat' || segs[0] === 'chat') && m === 'POST') {
       try {
-        const { message, history } = req.body || {};
+        const { message, history } = body;
         const result = await chatWithGemini({ message, history });
         return res.json({ ok: true, reply: result.reply });
       } catch (err) {
@@ -80,7 +108,7 @@ module.exports = async (req, res) => {
 
     // ----- public: contact form -----
     if (route === 'contact' && m === 'POST') {
-      const { name, email, phone, service, contactMethod, message, website } = req.body || {};
+      const { name, email, phone, service, contactMethod, message, website } = body;
       if (website) return res.json({ ok: true }); // honeypot
       if (!name || !name.trim() || (!email && !phone)) {
         return res.status(400).json({ error: 'Please provide your name and at least one way to reach you.' });
@@ -101,7 +129,7 @@ module.exports = async (req, res) => {
 
     // ----- auth -----
     if (route === 'login' && m === 'POST') {
-      const supplied = String((req.body || {}).password || '');
+      const supplied = String(body.password || '');
       const a = crypto.createHash('sha256').update(supplied).digest();
       const b = crypto.createHash('sha256').update(ADMIN_PASSWORD).digest();
       if (!crypto.timingSafeEqual(a, b)) return res.status(401).json({ error: 'Incorrect password.' });
@@ -116,35 +144,42 @@ module.exports = async (req, res) => {
       return res.json({ authed: isAuthed(req) });
     }
 
-    // ----- admin (everything below requires auth) -----
-    if (!isAuthed(req)) return res.status(401).json({ error: 'unauthorized' });
+    // ----- admin only (explicit prefixes — don't 401 public unknown routes) -----
+    const isAdminRoute =
+      route === 'submissions' ||
+      route === 'export' ||
+      segs[0] === 'submissions';
 
-    if (route === 'submissions' && m === 'GET') {
-      return res.json(await getLeads());
-    }
-    if (route === 'export' && m === 'GET') {
-      const escCsv = v => `"${String(v || '').replace(/"/g, '""')}"`;
-      const rows = (await getLeads()).map(s =>
-        [s.receivedAt, s.name, s.email, s.phone, s.service, s.contactMethod, s.message, s.read ? 'yes' : 'no'].map(escCsv).join(','));
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="wecare-leads.csv"');
-      return res.send(['"Received","Name","Email","Phone","Service","Preferred Contact","Message","Read"', ...rows].join('\r\n'));
-    }
-    if (segs[0] === 'submissions' && segs[1] && segs[2] === 'read' && m === 'POST') {
-      const lead = await db().get(leadKey(segs[1]));
-      if (lead) {
-        lead.read = !(req.body && req.body.read === false);
-        await db().set(leadKey(segs[1]), lead);
+    if (isAdminRoute) {
+      if (!isAuthed(req)) return res.status(401).json({ error: 'unauthorized' });
+
+      if (route === 'submissions' && m === 'GET') {
+        return res.json(await getLeads());
       }
-      return res.json({ ok: true });
-    }
-    if (segs[0] === 'submissions' && segs[1] && !segs[2] && m === 'DELETE') {
-      await db().del(leadKey(segs[1]));
-      await db().lrem(IDS_KEY, 0, segs[1]);
-      return res.json({ ok: true });
+      if (route === 'export' && m === 'GET') {
+        const escCsv = v => `"${String(v || '').replace(/"/g, '""')}"`;
+        const rows = (await getLeads()).map(s =>
+          [s.receivedAt, s.name, s.email, s.phone, s.service, s.contactMethod, s.message, s.read ? 'yes' : 'no'].map(escCsv).join(','));
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="wecare-leads.csv"');
+        return res.send(['"Received","Name","Email","Phone","Service","Preferred Contact","Message","Read"', ...rows].join('\r\n'));
+      }
+      if (segs[0] === 'submissions' && segs[1] && segs[2] === 'read' && m === 'POST') {
+        const lead = await db().get(leadKey(segs[1]));
+        if (lead) {
+          lead.read = !(body && body.read === false);
+          await db().set(leadKey(segs[1]), lead);
+        }
+        return res.json({ ok: true });
+      }
+      if (segs[0] === 'submissions' && segs[1] && !segs[2] && m === 'DELETE') {
+        await db().del(leadKey(segs[1]));
+        await db().lrem(IDS_KEY, 0, segs[1]);
+        return res.json({ ok: true });
+      }
     }
 
-    return res.status(404).json({ error: 'not found' });
+    return res.status(404).json({ error: 'not found', route: route || '(root)' });
   } catch (err) {
     console.error(err);
     return res.status(err.status || 500).json({ error: err.status ? err.message : 'Server error. Please try again.' });
