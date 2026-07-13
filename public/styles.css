@@ -512,61 +512,41 @@ body:hover .cursor-glow { opacity: 1; }
 /* ============ about ============ */
 .about-grid {
   display: grid;
-  grid-template-columns: minmax(180px, 240px) 1fr;
+  grid-template-columns: minmax(160px, 220px) 1fr;
   gap: 56px 64px;
   align-items: center;
 }
 .about-photo {
   justify-self: center;
   width: 100%;
-  max-width: 240px;
+  max-width: 220px;
 }
 .headshot-frame {
   position: relative;
   width: 100%;
   margin: 0 auto;
-  transform-style: preserve-3d;
-  transition: transform 0.4s var(--ease-out);
+  /* Simple rectangular border — no offset decorative frame */
+  border: 2px solid var(--gold);
+  border-radius: 4px;
+  background: var(--cream);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  line-height: 0;
 }
-/* Gold corner-frame accent — open portrait mat */
-.headshot-frame::before {
-  content: "";
-  position: absolute;
-  inset: -10px -10px 10px 10px;
-  border: 1.5px solid var(--gold);
-  border-radius: 18px;
-  z-index: 0;
-  transition: inset 0.35s var(--ease-out), opacity 0.3s ease;
-  opacity: 0.9;
-}
-.headshot-frame:hover::before {
-  inset: -14px -8px 6px 12px;
-}
-/* Soft wash behind the portrait */
+.headshot-frame::before,
 .headshot-frame::after {
-  content: "";
-  position: absolute;
-  inset: 10px -14px -14px 10px;
-  background: linear-gradient(155deg, var(--green-tint) 0%, var(--gold-soft) 100%);
-  border-radius: 18px;
-  z-index: -1;
-  opacity: 0.65;
+  content: none;
+  display: none;
 }
 .headshot-frame img {
-  position: relative;
-  z-index: 1;
   display: block;
   width: 100%;
-  /* Tall portrait — shows face + upper body, not a tight crop */
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
-  object-position: center 18%;
-  border-radius: 16px;
-  box-shadow: var(--shadow-lg);
-  background: var(--green-tint);
-  /* Subtle vignette edge via mask-friendly ring */
-  outline: 1px solid rgba(255, 255, 255, 0.35);
-  outline-offset: -1px;
+  height: auto;
+  /* Full photo visible — no crop */
+  object-fit: contain;
+  object-position: center;
+  border-radius: 0;
+  background: var(--cream);
 }
 .credential-chips {
   display: flex;
@@ -1010,11 +990,9 @@ body:hover .cursor-glow { opacity: 1; }
     grid-template-columns: 1fr;
   }
   .about-photo {
-    max-width: 200px;
+    max-width: 180px;
     margin: 0 auto;
   }
-  .headshot-frame::before { inset: -8px -8px 8px 8px; }
-  .headshot-frame::after { inset: 8px -12px -12px 8px; }
 
   .cards {
     grid-template-columns: 1fr 1fr;
@@ -1204,21 +1182,11 @@ body:hover .cursor-glow { opacity: 1; }
   .section-head { margin-bottom: 28px; }
   .section-sub { font-size: 0.95rem; }
 
-  /* About: compact stylized portrait, full face visible */
+  /* About: compact photo, full image, simple rect border */
   .about-grid { gap: 24px; }
   .about-photo {
     order: -1;
-    max-width: 168px;
-  }
-  .headshot-frame::before {
-    inset: -6px -6px 6px 6px;
-    border-width: 1.5px;
-  }
-  .headshot-frame::after { display: none; }
-  .headshot-frame img {
-    aspect-ratio: 3 / 4;
-    object-position: center 16%;
-    border-radius: 14px;
+    max-width: 150px;
   }
   .credential-chips {
     margin-top: 16px;
